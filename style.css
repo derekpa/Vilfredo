@@ -525,6 +525,16 @@ div.invisible {
     position: relative;
     margin-left: 10px;
 }
+
+#actionbox #commentsbox .votercomment.answer {
+    border: 1px solid #dadada;
+    margin-top: -10px;
+    padding: 5px;
+    width: 90%;
+    position: relative;
+    margin-left: 10px;
+}
+
 #actionbox #commentsbox .votercommentheadings {
     margin-bottom: 15px;
     padding: 5px;
@@ -1009,6 +1019,33 @@ td.votes {
 .voting_choices > img:first-child+img+img {
     margin-left: 30%;
 }
+.voting_choices > img:first-child+img+img+img {
+    margin-left: 30%;
+    margin-top: 5px;
+}
+
+.commentform span {
+    margin-left: 5px;
+}
+.commentform span.support {
+    color: green;
+}
+.commentform span.oppose {
+    color: red;
+}
+.commentform span.confused {
+    color: blue;
+}
+.commentform .options {
+    margin: 3px 0 0 0;
+}
+
+.auth_reply_txt {
+    margin: auto;
+    color: blue;
+    text-decoration: underline;
+    cursor: pointer;
+}
 
 .voting_choice {
 	position: absolute;
@@ -1056,7 +1093,6 @@ td.votes {
     right: -25;
     width: 25px;
     height: 25px;
-    display: none;
 }
 .comment_type {
     position: absolute;
@@ -1119,7 +1155,146 @@ td.votes {
 	/*border: 1px solid red;*/
 }
 
-.commentslist .comment {
+.questionsandanswers {
+    width: 98%;
+    margin-left: 20px;
+    margin-top: 0;
+}
+
+.noshow {
+    display: none;
+}
+
+.text .likes {
+    position: absolute;
+    bottom: 3px;
+    left: 5px;
+    font-size: .8em;
+    color: green;
+}
+
+#showallcomments {
+    font-size: 1em;
+    color: blue;
+    text-decoration: underline;
+    cursor: pointer;
+}
+.addcommentlink {
+    font-size: 1.1em;
+    color: blue;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 10px;
+    text-align: center;
+    margin-top: 10px;
+}
+.canceladdcommentlink {
+    font-size: 1.1em;
+    color: blue;
+    text-decoration: underline;
+    cursor: pointer;
+    padding: 10px;
+    text-align: center;
+    margin-top: 10px;
+}
+
+
+
+td.comment .likes {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    font-size: .8em;
+    color: green;
+}
+
+.questionsandanswers thead th{
+    color: #0020cc;
+    padding-left: 0;
+    text-align: left;
+    font-size: 1.2em;
+    height: 30px;
+    vertical-align: top;
+}
+.questionsandanswers tbody td.nocomment{
+    height: 80px;
+    text-align: center;
+    vertical-align: middle;
+}
+
+.questionsandanswers tbody td.comment {
+    height: 120px;
+    /*
+    min-height: 100px;
+    height: auto !important;
+    height: 100px;
+    */
+    border: 1px solid blue;
+    width: 370px;
+    background-color: #FAEBD7;
+    vertical-align: top;
+    font-size: 1.1em;
+    padding: 3px;
+    padding-bottom: 10px;
+}
+
+.questionsandanswers tbody td.reply {
+    height: 120px;
+    border: 1px solid blue;
+    width: 370px;
+    background-color: #FAEBD7;
+    vertical-align: top;
+    font-size: 1.1em;
+    padding: 3px;
+}
+
+textarea.reply {
+    height: 80px;
+}
+
+div.paretoproposal .select_comment input {
+    display: none;
+}
+div.paretoproposal td.select input {
+    display: none;
+}
+div.paretoproposal .questionsandanswers tbody td.comment {
+    
+}
+div.paretoproposal .questionsandanswers {
+     width: 75%;
+ }
+
+.cellbox {
+    width: 100%;
+    height: 100%;
+    position: relative;
+    padding-bottom: 20px;
+}
+.questionsandanswers tbody td.comment .likes {
+    position: absolute;
+    bottom: -10px;
+    left: 5px;
+    font-size: .8em;
+    color: green;
+}
+.cellbox .likes {
+    position: absolute;
+    bottom: -50px;
+    left: 5px;
+    font-size: .8em;
+    color: green;
+}
+.questionsandanswers tbody td.select{
+    border: 1px solid blue;
+    width: 15px;
+    border: none;
+    vertical-align: top;
+}
+
+
+
+.commentslist .comment, .questionanswerlist .comment {
 	border: 1px solid gray;
 	width: 400px;
 	/* height: 150px; */
@@ -1130,11 +1305,12 @@ td.votes {
 	float: right;
 	position: relative;
 }
-.commentslist .comment .text {
+.commentslist .comment .text, .questionanswerlist .comment .text {
 	padding: 5px;
 	font-size: 1.1em;
+	padding-bottom: 20px;
 }
-.commentslist .comment .author {
+.commentslist .comment .author, .questionanswerlist .comment .author {
 	padding: 5px;
 }
 
@@ -1142,6 +1318,9 @@ td.votes {
     color: #b20000;
 }
 .confused h3 {
+    color: #0020cc;
+}
+.answer h3 {
     color: #0020cc;
 }
 .support h3 {
@@ -1154,8 +1333,16 @@ td.votes {
 .confused .comment {
     border: 1px solid #0020cc;
 }
+.answer .comment {
+    border: 1px solid #0020cc;
+}
 .support .comment {
     border: 1px solid green;
+}
+
+.commentsright.answer.noreply {
+    color: gray;
+    text-align: center;
 }
 
 .space {
@@ -2064,7 +2251,6 @@ a.tweet span.vert {
 .graphcontainer .inner {
 	width: 49%;
 	height: 100%;
-	/*border: yellow solid 1px;*/
 	position: relative;
 }
 

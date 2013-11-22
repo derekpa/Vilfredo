@@ -2079,10 +2079,15 @@ function GetProposal($proposal)
 
 function GetQuestion($question)
 {
-	 $sql = "SELECT `q`.*, `u`.`username`
+	if (empty($question))
+	{
+		return false;
+	} 
+
+	$sql = "SELECT `q`.*, `u`.`username`
 	     FROM `questions` AS `q`, `users` AS `u`
 	     WHERE `q`.`id` = $question
-		AND `q`.`usercreatorid` = u.id";
+		AND `q`.`usercreatorid` = `u`.`id`";
 
 	$result = mysql_query($sql);
 	
@@ -5421,6 +5426,183 @@ function setUserOppose($userid, $proposalid, $type, $generation, $originalid, $c
 	}
 }
 
+function getCommentIDsFromUserCommentsList($propcomments)
+{
+	set_log(__FUNCTION__." propcomments = $propcomments");
+	$commentids = array();
+	foreach($propcomments as $p)
+	{
+		foreach ($p as $comment)
+		{
+			$commentids[] = $comment;
+		}
+	}
+	return $commentids;
+}
+
+function getUserCommentLikesObjFromProposals($userid, $proposals)
+{								
+	$userlikes = array();
+	$pids = implode(",", $proposals);
+	$sql = "SELECT `ucl`.* FROM `user_comment_likes` `ucl`, `comments` `comm`
+			WHERE `ucl`.`commentid` = `comm`.`id`
+			AND `ucl`.`userid` = $userid
+			AND `ucl`.`proposalid` IN ( $pids )";
+		
+	set_log(__FUNCTION__." :: SQL = $sql");
+		
+	if (!$result = mysql_query($sql))
+	{
+		db_error(__FUNCTION__ . " SQL: " . $sql);
+		return false;
+	}
+	elseif (mysql_num_rows($result) > 0)
+	{
+		while ($row = mysql_fetch_assoc($result))
+		{
+			$userlikes[$row['proposalid']][$row['commentid']] = 1;
+		}
+	}
+	return $userlikes;
+}
+function getUserCommentLikesFromProposals($userid, $proposals)
+{								
+	$userlikes = array();
+	$pids = implode(",", $proposals);
+	$sql = "SELECT `ucl`.* FROM `user_comment_likes` `ucl`, `comments` `comm`
+			WHERE `ucl`.`commentid` = `comm`.`id`
+			AND `ucl`.`userid` = $userid
+			AND `ucl`.`proposalid` IN ( $pids )";
+		
+	set_log(__FUNCTION__." :: SQL = $sql");
+		
+	if (!$result = mysql_query($sql))
+	{
+		db_error(__FUNCTION__ . " SQL: " . $sql);
+		return false;
+	}
+	elseif (mysql_num_rows($result) > 0)
+	{
+		while ($row = mysql_fetch_assoc($result))
+		{
+			$userlikes[$row['proposalid']][] = $row['commentid'];
+		}
+	}
+	return $userlikes;
+}
+
+function getUserCommentLikesFromCommentIDs($commentids)
+{								
+	$userlikes = array();
+	$cids = implode(",", $commentids);
+	$sql = "SELECT * FROM `user_comment_likes`
+			WHERE `commentid` IN ( $cids )";
+		
+	set_log(__FUNCTION__." :: SQL = $sql");
+		
+	if (!$result = mysql_query($sql))
+	{
+		db_error(__FUNCTION__ . " SQL: " . $sql);
+		return false;
+	}
+	elseif (mysql_num_rows($result) > 0)
+	{
+		while ($row = mysql_fetch_assoc($result))
+		{
+			//array_push($userlikes, $row['userid']);
+			$userlikes[$row['proposalid']][$row['commentid']][] = $row['userid'];
+		}
+	}
+	return $userlikes;
+}
+function getCommentLikesFromProposals($proposals)
+{								
+	$userlikes = array();
+	$pids = implode(",", $proposals);
+	$sql = "SELECT `ucl`.* FROM `user_comment_likes` `ucl`, `comments` `comm`
+			WHERE `ucl`.`commentid` = `comm`.`id`
+			AND `ucl`.`proposalid` IN ( $pids )";
+		
+	set_log(__FUNCTION__." :: SQL = $sql");
+		
+	if (!$result = mysql_query($sql))
+	{
+		db_error(__FUNCTION__ . " SQL: " . $sql);
+		return false;
+	}
+	elseif (mysql_num_rows($result) > 0)
+	{
+		while ($row = mysql_fetch_assoc($result))
+		{
+			$userlikes[$row['proposalid']][$row['commentid']][] = $row['userid'];
+		}
+	}
+	return $userlikes;
+}
+
+function compare_userlikes($a, $b)
+{
+	$pids = array_keys($a);
+	$diff = array();
+	foreach ($pids as $pid)
+	{
+		if (isset($b[$pid]))
+		{
+			$diff[$pid] = array_diff($a[$pid], $b[$pid]);
+		}
+	}
+	return $diff;
+}
+
+function addUserCommentLikes($userid, $proposalcomments)
+{								
+	if (empty($proposalcomments)) return false;
+	
+	set_log(__FUNCTION__." called...");
+	set_log($proposalcomments);
+	
+	$sql = "INSERT IGNORE INTO `user_comment_likes` (`userid`, `commentid`, `proposalid`) VALUES ";
+	
+	foreach ($proposalcomments as $pid => $commentids)
+	{
+		foreach ($commentids as $commentid)
+		{
+			$sql .= "($userid, $commentid, $pid),";
+		}
+	}	
+	$sql = rtrim($sql, ",");
+				
+	set_log(__FUNCTION__." :: SQL = $sql");
+		
+	if (!mysql_query($sql))
+	{
+		db_error(__FUNCTION__ . " SQL: " . $sql);
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+function removeUserCommentLikes($userid, $commentids)
+{								
+	$comm_ids = implode(",", $commentids);
+	$sql = "DELETE FROM `user_comment_likes`
+			WHERE `userid` = $userid
+			AND `commentid` IN ( $comm_ids )";
+		
+	set_log(__FUNCTION__." :: SQL = $sql");
+		
+	if (!mysql_query($sql))
+	{
+		db_error(__FUNCTION__ . " SQL: " . $sql);
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
 function addUserOppose($userid, $proposalid, $type, $generation, $commentid=0)
 {							
 		
@@ -5488,10 +5670,10 @@ function addComment_old($userid, $proposalid, $comment, $type, $generation)
 	}
 }
 
-function addComment($userid, $proposalid, $type, $generation, $comment, $originalid)
+function addComment($userid, $proposalid, $type, $generation, $comment, $originalid, $replyto=0)
 {		
-	$sql = sprintf("INSERT INTO `comments` (`userid`, `proposalid`, `type`, `roundid`, `comment`, `originalid`)
-		VALUES ($userid, $proposalid, '$type', $generation, '%s', $originalid)",
+	$sql = sprintf("INSERT INTO `comments` (`userid`, `proposalid`, `type`, `roundid`, `comment`, `originalid`, `replyto`)
+		VALUES ($userid, $proposalid, '$type', $generation, '%s', $originalid, $replyto)",
 		mysql_real_escape_string($comment));
 		
 	set_log(__FUNCTION__." :: SQL = $sql");
@@ -5507,6 +5689,47 @@ function addComment($userid, $proposalid, $type, $generation, $comment, $origina
 	}
 }
 
+// If called will delete ALL unsupported comments unless ones with answers
+function deleteAllUnsupportedComments()
+{		
+	$sql = "DELETE FROM `comments` WHERE 
+			`id` NOT IN (SELECT `commentid` FROM `user_comment_likes`) 
+			AND `id` NOT IN (SELECT `replyto` FROM `user_comment_likes`)";
+		
+	set_log(__FUNCTION__.' - '.$sql);
+	
+	if (!mysql_query($sql))
+	{
+		db_error(__FUNCTION__ . " SQL: " . $sql);
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
+
+function deleteUnsupportedComments($commentids)
+{		
+	$cids = implode(",", $commentids);
+	$sql = "DELETE
+			FROM `comments` WHERE 
+			`id` IN ( $cids ) 
+			AND `id` NOT IN (SELECT `commentid` FROM `user_comment_likes`) 
+			AND `id` NOT IN (SELECT `replyto` FROM `user_comment_likes`)";
+		
+	set_log(__FUNCTION__.' - '.$sql);
+	
+	if (!mysql_query($sql))
+	{
+		db_error(__FUNCTION__ . " SQL: " . $sql);
+		return false;
+	}
+	else
+	{
+		return true;
+	}
+}
 function deleteComment($commentid)
 {		
 	$sql = "DELETE
@@ -5636,7 +5859,8 @@ function getUserCommentsForProposals($userid, $proposalids)
 
 function getVotingCommentDetailsForText($text) // haha
 {
-	$sql = "SELECT `com`.*, `user_count`.`usercount`
+	$sql = "SELECT `com`.*, 
+	COALESCE(`user_count`.`usercount`, 0) AS `usercount`
 	FROM `comments` as `com`
 	LEFT JOIN
 	(
@@ -5660,13 +5884,14 @@ function getVotingCommentDetailsForText($text) // haha
 
 function getVotingCommentDetailsForProposalAllGen($originalid) // NEW
 {
-	$sql = "SELECT `com`.*, `user_count`.`usercount`
+	$sql = "SELECT `com`.*, 
+	COALESCE(`user_count`.`usercount`, 0) AS `usercount`
 	FROM `comments` as `com`
 	LEFT JOIN
 	(
-	    SELECT `commentid`, count(*) as `usercount`
-	    FROM `oppose`
-	    GROUP BY `commentid`
+	    SELECT `commentid`, COUNT(*) as `usercount`
+	    FROM `user_comment_likes`
+		GROUP BY `commentid`
 	) as `user_count` ON `com`.`id` = `user_count`.`commentid`
 	WHERE `com`.`proposalid` IN
 	(
@@ -5696,7 +5921,8 @@ function getVotingCommentDetailsForProposalAllGen($originalid) // NEW
 }
 function getVotingCommentDetails($commentid) // NEW
 {
-	$sql = "SELECT `com`.*, `user_count`.`usercount`
+	$sql = "SELECT `com`.*, 
+	COALESCE(`user_count`.`usercount`, 0) AS `usercount`
 	FROM `comments` as `com`
 	LEFT JOIN
 	(
@@ -5719,7 +5945,8 @@ function getVotingCommentDetails($commentid) // NEW
 }
 function getUserVotingComment($userid, $pid, $generation)
 {
-	$sql = "SELECT `opp`.*, `com`.`comment`, `user_count`.`usercount`
+	$sql = "SELECT `opp`.*, `com`.`comment`,
+	COALESCE(`user_count`.`usercount`, 0) AS `usercount`
 	FROM `comments` as `com`, `oppose` as `opp`
 	LEFT JOIN
 	(
@@ -5859,10 +6086,56 @@ function getCommentsListAll_new($proposallist)
 	return $comments;
 }
 
-function getCommentsListAll($proposaloriginalids)
+function getQuestionsList($proposalids)
+{
+	$results = array();
+	$questions = array();
+	$replies = array();
+	
+	$pids = implode(',', $proposalids);
+	$sql = "SELECT `c`.*, `u`.`username` FROM `comments` as `c`, `users` as `u` 
+	WHERE `proposalid` IN ($pids) 
+	AND `u`.`id` = `c`.`userid`
+	AND `type` IN ('confused', 'answer')
+	ORDER BY `created` DESC";
+	
+	set_log(__FUNCTION__." - ".$sql);
+	
+	if(!$result = mysql_query($sql))
+	{
+		db_error(__FUNCTION__ . " SQL: $sql");
+		return false;
+	}
+	elseif (mysql_num_rows($result) > 0)
+	{
+		while ($row = mysql_fetch_assoc($result))
+		{
+			if ($row['type'] == 'confused')
+			{
+				$questions[$row['proposalid']][$row['id']] = 
+			array('comment' => $row['comment'], 'authorid' => $row['userid'], 'authorname' => $row['username'], 'created' => $row['created'], 'type' => $row['type'], 'id' => $row['id'], 'replyto' => $row['replyto']);
+			}
+			elseif ($row['type'] == 'answer')
+			{
+				$replies[$row['proposalid']][$row['replyto']] = 
+			array('comment' => $row['comment'], 'authorid' => $row['userid'], 'authorname' => $row['username'], 'created' => $row['created'], 'type' => $row['type'], 'id' => $row['id'], 'replyto' => $row['replyto']);
+			}
+		}
+	}
+	
+	$results['questions'] = $questions;
+	$results['replies'] = $replies;
+	
+	return $results;
+}
+
+
+
+function getCommentsListAll_v1($proposaloriginalids)
 {
 	$comments = array();
 	$pids = implode(',', $proposaloriginalids);
+	
 	$sql = "SELECT `c`.* FROM `comments` as `c`
 	WHERE `originalid` IN ($pids) 
 	ORDER BY `created` DESC";
@@ -5888,15 +6161,102 @@ function getCommentsListAll($proposaloriginalids)
 	}
 	return $comments;
 }
-
-function getCommentsList($proposalids)
+function getCommentsListAll($proposalids) //loopy
 {
 	$comments = array();
 	$pids = implode(',', $proposalids);
-	$sql = "SELECT `c`.*, `u`.`username` FROM `comments` as `c`, `users` as `u` 
-	WHERE `proposalid` IN ($pids) 
-	AND `u`.`id` = `c`.`userid`
-	ORDER BY `created` DESC";
+	
+	$sql = "SELECT `c`.*, `u`.`username`,
+			COALESCE(`likes`.`numlikes`, 0) AS `numlikes`
+			FROM `users` as `u`, `comments` as `c`
+			LEFT JOIN
+			(
+				SELECT `commentid`, COUNT(*) as `numlikes`
+			        FROM `user_comment_likes`
+				GROUP BY `commentid`
+			) as `likes` ON `c`.`id` = `likes`.`commentid`
+			WHERE `originalid` IN ($pids)
+			AND `u`.`id` = `c`.`userid`
+			AND `type` != 'answer'
+			ORDER BY `created` DESC";
+	
+	set_log(__FUNCTION__." - ".$sql);
+	
+	if(!$result = mysql_query($sql))
+	{
+		db_error(__FUNCTION__ . " SQL: $sql");
+		return false;
+	}
+	elseif (mysql_num_rows($result) > 0)
+	{
+		while ($row = mysql_fetch_assoc($result))
+		{
+			$current_prop = array_search($row['originalid'], $proposalids);
+			$comments[$current_prop][] = array('comment' => $row['comment'], 'authorid' => $row['userid'], 'authorname' => $row['username'], 'created' => $row['created'], 'type' => $row['type'], 'id' => $row['id'], 'numlikes' => $row['numlikes'], 'originalid' => $row['originalid'], 'roundid' => $row['roundid']);
+		}
+	}
+	return $comments;
+}
+function getAnswersListAll($proposalids)
+{
+	$answers = array();
+	
+	$pids = implode(',', $proposalids);
+	
+	$sql = "SELECT `c`.*, `u`.`username`,
+			COALESCE(`likes`.`numlikes`, 0) AS `numlikes`
+			FROM `users` as `u`, `comments` as `c`
+			LEFT JOIN
+			(
+				SELECT `commentid`, COUNT(*) as `numlikes`
+			        FROM `user_comment_likes`
+				GROUP BY `commentid`
+			) as `likes` ON `c`.`id` = `likes`.`commentid`
+			WHERE `originalid` IN ($pids) 
+			AND `u`.`id` = `c`.`userid`
+			AND `type` = 'answer'
+			ORDER BY `created` DESC";
+	
+	set_log(__FUNCTION__." - ".$sql);
+	
+	if(!$result = mysql_query($sql))
+	{
+		db_error(__FUNCTION__ . " SQL: $sql");
+		return false;
+	}
+	elseif (mysql_num_rows($result) > 0)
+	{
+		while ($row = mysql_fetch_assoc($result))
+		{
+			$current_prop = array_search($row['originalid'], $proposalids);
+			//$answers[$row['proposalid']][$row['replyto']] = 
+			$answers[$current_prop][$row['replyto']] = 
+			array('comment' => $row['comment'], 'authorid' => $row['userid'], 'authorname' => $row['username'], 'created' => $row['created'], 'type' => $row['type'], 'id' => $row['id'], 'replyto' => $row['replyto'], 'numlikes' => $row['numlikes'], 'originalid' => $row['originalid'], 'roundid' => $row['roundid']);
+		}
+	}
+	
+	return $answers;
+}
+
+
+function getCommentsList($proposalids) //loopy
+{
+	$comments = array();
+	$pids = implode(',', $proposalids);
+	
+	$sql = "SELECT `c`.*, `u`.`username`,
+			COALESCE(`likes`.`numlikes`, 0) AS `numlikes`
+			FROM `users` as `u`, `comments` as `c`
+			LEFT JOIN
+			(
+				SELECT `commentid`, COUNT(*) as `numlikes`
+			        FROM `user_comment_likes`
+				GROUP BY `commentid`
+			) as `likes` ON `c`.`id` = `likes`.`commentid`
+			WHERE `proposalid` IN ($pids)
+			AND `u`.`id` = `c`.`userid`
+			AND `type` != 'answer'
+			ORDER BY `created` DESC";
 	
 	set_log(__FUNCTION__." - ".$sql);
 	
@@ -5910,11 +6270,58 @@ function getCommentsList($proposalids)
 		while ($row = mysql_fetch_assoc($result))
 		{
 			$comments[$row['proposalid']][] = 
-			array('comment' => $row['comment'], 'authorid' => $row['userid'], 'authorname' => $row['username'], 'created' => $row['created'], 'type' => $row['type'], 'id' => $row['id']);
+			array('comment' => $row['comment'], 'authorid' => $row['userid'], 'authorname' => $row['username'], 'created' => $row['created'], 'type' => $row['type'], 'id' => $row['id'], 'numlikes' => $row['numlikes'], 'originalid' => $row['originalid'], 'roundid' => $row['roundid']);
 		}
 	}
 	return $comments;
 }
+
+function getAnswersList($proposalids)
+{
+	$answers = array();
+	
+	$pids = implode(',', $proposalids);
+	
+	$sql_1 = "SELECT `c`.*, `u`.`username` FROM `comments` as `c`, `users` as `u` 
+	WHERE `proposalid` IN ($pids) 
+	AND `u`.`id` = `c`.`userid`
+	AND `type` = 'answer'
+	ORDER BY `created` DESC";
+	
+	$sql = "SELECT `c`.*, `u`.`username`,
+			COALESCE(`likes`.`numlikes`, 0) AS `numlikes`
+			FROM `users` as `u`, `comments` as `c`
+			LEFT JOIN
+			(
+				SELECT `commentid`, COUNT(*) as `numlikes`
+			        FROM `user_comment_likes`
+				GROUP BY `commentid`
+			) as `likes` ON `c`.`id` = `likes`.`commentid`
+			WHERE `proposalid` IN ($pids) 
+			AND `u`.`id` = `c`.`userid`
+			AND `type` = 'answer'
+			ORDER BY `created` DESC";
+	
+	set_log(__FUNCTION__." - ".$sql);
+	
+	if(!$result = mysql_query($sql))
+	{
+		db_error(__FUNCTION__ . " SQL: $sql");
+		return false;
+	}
+	elseif (mysql_num_rows($result) > 0)
+	{
+		while ($row = mysql_fetch_assoc($result))
+		{
+			$answers[$row['proposalid']][$row['replyto']] = 
+			array('comment' => $row['comment'], 'authorid' => $row['userid'], 'authorname' => $row['username'], 'created' => $row['created'], 'type' => $row['type'], 'id' => $row['id'], 'replyto' => $row['replyto'], 'numlikes' => $row['numlikes'], 'roundid' => $row['roundid']);
+		}
+	}
+	
+	return $answers;
+}
+
+
 function getCommentsByProposals($proposalids)
 {
 	$comments = array();
@@ -6953,7 +7360,26 @@ function getFinalVotes($pids)
 	}
 }
 
-
+function fetchQuestionProposalsByID($question, $generation)
+{
+	$sql = "SELECT * FROM `proposals`
+			WHERE `experimentid` = $question AND `roundid` = $generation";
+			
+	if ($result = mysql_query($sql))
+	{	
+		$proposals = array();
+		while ($row = mysql_fetch_assoc($result))
+		{
+			$proposals[$row['id']] = $row;
+		}
+		return $proposals;
+	}
+	else
+	{
+		db_error(__FUNCTION__ . " SQL: " . $sql);
+		return false;
+	}
+}
 
 function fetchProposalsFromIDs($pids)
 {

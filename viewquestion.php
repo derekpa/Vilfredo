@@ -48,11 +48,16 @@ if (!$userid)
 <script type="text/javascript">
 //Assumes id is passed in the URL
 var recaptcha_public_key = '<?php echo $recaptcha_public_key;?>';
-var votingcommentslist;
+var usercommentslist;
+var useranswerlist;
+//var userlikes;
+var prev_user_likes;
 var userid = <?=json_encode($userid)?>;
 var require_voting_comments = <?=json_encode($voting_settings['require_voting_comments'])?>;
 var voting_settings = <?=json_encode($voting_settings)?>;
 var user_commentid;
+
+var proposals;
 
 var NOT_VOTED = <?=json_encode(NOT_VOTED)?>;
 var AGREE = <?=json_encode(AGREE)?>;
@@ -67,17 +72,28 @@ function closeCommentsList(comments)
 		return;
 	}
 	
+	/*
 	if (comments.siblings('.commentform').is(':visible'))
 	{
 		return;
-	}
+	}*/
 	
 	var dislikecommentslist = comments.find('.dislikecommentslist');
 	var confusedcommentslist = comments.find('.confusedcommentslist');
+	var supportcommentslist = comments.find('.supportcommentslist');
+	var confusedanswerlist = comments.find('.confusedanswerlist');
+	var questionanswertable = comments.find('.questionsandanswers tbody');
+    var questionanswerlist = comments.find('.questionanswerlist');
+	var commentslistsdisplayed = comments.find('.comment_form_displayed');
 	
 	comments.slideUp(500, function(){
 		dislikecommentslist.empty();
-		confusedcommentslist.empty();	
+		confusedcommentslist.empty();
+		supportcommentslist.empty();
+		confusedanswerlist.empty();
+		questionanswertable.empty();
+		commentslistsdisplayed.remove();
+		questionanswerlist.empty();	
 	});
 }
 
@@ -97,6 +113,11 @@ function openCommentsList(comments)
 {	
 	var dislikecommentslist = comments.find('.dislikecommentslist');
 	var confusedcommentslist = comments.find('.confusedcommentslist');
+	var supportcommentslist = comments.find('.supportcommentslist');
+	var confusedanswerlist = comments.find('.confusedanswerlist');
+	
+	var questionanswertable = comments.find('.questionsandanswers tbody');
+	var questionanswerlist = comments.find('.questionanswerlist');
 	
 	if (comments.is(':visible'))
 	{
@@ -120,50 +141,320 @@ function openCommentsList(comments)
 			pid = parseInt(el_with_id.attr('id').replace(/[^0-9]/g, ''));
 		}
 		
+		comments.append('<input type="hidden" class="comment_form_displayed" name="comment_form_displayed[]" value="' + pid + '" />');
+		
 		//alert(pid);
 		
-		if (typeof votingcommentslist[pid] != 'undefined')
+		if (typeof usercommentslist[pid] != 'undefined')
 		{
-			var createLists = $.each(votingcommentslist[pid], function(i, usercomment) 
+			var createLists = $.each(usercommentslist[pid], function(i, usercomment) 
 			{					
 				var selected = ''
+				/*
 				if (user_commentid != null && 
 					typeof user_commentid[pid] != 'undefined' && 
 					user_commentid[pid] == usercomment['id'])
 				{
 					selected = 'checked="checked"';
+				}*/
+
+				if (typeof prev_user_likes != 'undefined' && 
+					typeof prev_user_likes[pid] != 'undefined')
+				{				
+					/*
+					if ($.inArray(usercomment['id'], prev_user_likes[pid]))
+					{
+						selected = 'checked="checked"';
+						alert('Comment ' + usercomment['id'] + 'supported');
+					}*/
+					
+					
+					$(prev_user_likes[pid]).each(function(index,commentid){
+					    if (commentid == usercomment['id'])
+						{
+							//alert('Supported Comment ' + usercomment['id'] + ':' + usercomment['comment']);
+							selected = 'checked="checked"';
+						}
+					});
 				}
 				if (usercomment['comment'] != '')
 				{
 					if (usercomment['type'] == 'dislike')
 					{
 						dislikecommentslist.append('<div class="comment">' + 
-						'<div class="select_comment"><input type="radio" name="select_comment[' + pid + ']" value="' +
-						usercomment["id"] + '"' + selected + '></div>' + 
+						'<div class="select_comment"><input title="Click to like this" type="checkbox" name="select_comment[' + 
+						pid + '][]" value="' + usercomment['id'] + '" ' + selected + '></div>' + 
 						'<div class="text">' + usercomment['comment'] +
+						'<div class="likes">' + usercomment['numlikes'] + ' users agree with this point</div>' +
 						'</div></div>');
 					}
+					if (usercomment['type'] == 'support')
+					{
+						supportcommentslist.append('<div class="comment">' + 
+						'<div class="select_comment"><input title="Click to like this" type="checkbox" name="select_comment[' + 
+						pid + '][]" value="' + usercomment['id'] + '" ' + selected + '></div>' + 
+						'<div class="text">' + usercomment['comment'] +
+						'<div class="likes">' + usercomment['numlikes'] + ' users agree with this point</div>' +
+						'</div></div>');
+					}
+					
+					
+					if (usercomment['type'] == 'confused')
+					{
+						
+						var buffer = ('<div class="commentsleft confused">' +
+							'<div class="comment">' + 
+							'<div class="select_comment"><input title="Click to like this" ' +
+							' type="checkbox" name="select_comment[' + 
+							pid + '][]" value="' + usercomment['id'] + '" ' + selected + '></div>' + 
+							'<div class="text">' + usercomment['comment'] +
+							'<div class="likes">' + usercomment['numlikes'] + ' users like this question</div>' +
+							'</div></div></div>');
+							
+						if (typeof useranswerlist != 'undefined' &&
+							typeof useranswerlist[pid] != 'undefined' && 
+							typeof useranswerlist[pid][usercomment['id']] != 'undefined')
+						{
+							var selected = '';
+				
+							if (typeof prev_user_likes != 'undefined' && 
+								typeof prev_user_likes[pid] != 'undefined')
+							{				
+								$(prev_user_likes[pid]).each(function(index,commentid){
+								    if (commentid == useranswerlist[pid][usercomment['id']]["id"])
+									{
+										selected = 'checked="checked"';
+									}
+								});
+							}
+							
+							var numlikes = useranswerlist[pid][usercomment['id']]["numlikes"] - 1;
+							
+							var approval = '<div class="likes">' + numlikes + '/' + 
+											usercomment['numlikes'] + ' like this answer</div>';
+							
+							var show_likes = '';
+							if (numlikes > 0)
+							{
+								show_likes = '<div class="likes">' + numlikes + ' likes</div>';
+							}
+							else
+							{
+								show_likes = '<div class="likes">' + '</div>';
+							}
+							
+							buffer += '<div class="commentsright answer">' +
+							'<div class="comment">' + 
+							'<div class="select_comment"><input title="Click to like this" ' +
+							' type="checkbox" name="select_comment[' + 
+							pid + '][]" value="' + useranswerlist[pid][usercomment['id']]["id"] + '" ' + selected + '></div>' + 
+							'<div class="text">' + useranswerlist[pid][usercomment['id']]["comment"] +
+							approval +
+							'</div></div></div>';
+						}
+						
+						else if (proposals[pid]['usercreatorid'] == userid) // donow
+						{
+							/*
+							buffer += '<td class="comment reply" contenteditable="true">' + 
+							'Reply to this question' +
+							'</td><td class="select"></td>';*/
+							
+							
+							buffer += '<div class="commentsright reply">' +
+							'<textarea class="reply" rows="5" cols="60" name="replies['+ pid +']['+ 
+							usercomment['id'] +']" placeholder="Reply to this question"></textarea>' +
+							'</td><td class="select"></td>';
+							
+						}
+						else
+						{
+							buffer += '<div class="commentsright answer noreply">' +
+							'<div class="comment">' + 
+							'<div class="select_comment"></div>' + 
+							'<div class="text">' + 'No answer yet.' +
+							'<div class="likes"></div>' +
+							'</div></div></div>';
+						}
+						
+						questionanswerlist.append('<div class="qabox">' + buffer + '</div>');
+						questionanswerlist.append('<div class="clear"></div>');
+					}
+					
+					/*
 					if (usercomment['type'] == 'confused')
 					{
 						confusedcommentslist.append('<div class="comment">' + 
-						'<div class="select_comment"><input type="radio" name="select_comment[' + pid + ']" value="' +
+						'<div class="select_comment"><input type="checkbox" name="select_comment[' + pid + ']" value="' +
 						usercomment["id"] + '"' + selected + '></div>' + 
 						'<div class="text">' + usercomment['comment'] +
 						'</div></div>');
-					}
+						
+						if (useranswerlist[pid][usercomment["id"]] != 'undefined')
+						{
+							confusedanswerlist.append('<div class="comment">' + 
+							'<div class="select_comment"><input type="checkbox" name="select_comment[' + pid + ']" value="' +
+							usercomment["id"] + '"' + selected + '></div>' + 
+							'<div class="text">' + usercomment['comment'] +
+							'</div></div>');
+						}
+						else
+						{
+							
+						}
+					}*/
+					/*
+					// Add to question-answer table
+					if (usercomment['type'] == 'confused')
+					{
+						var buffer = '<td class="comment">' + '<div class="cellbox">' +
+						'<div>' + usercomment['comment'] + '</div>' +
+						'<div class="likes">' + usercomment['numlikes'] + ' likes</div>' + '</div>' +
+						'</td><td class="select"><input title="Click to like this" type="checkbox" name="select_comment[' + 
+						pid + '][]" value="' + usercomment['id'] + '" ' + selected + '"></td>';
+						
+						if (typeof useranswerlist != 'undefined' &&
+							typeof useranswerlist[pid] != 'undefined' && 
+							typeof useranswerlist[pid][usercomment['id']] != 'undefined')
+						{
+							var selected = '';
+				
+							if (typeof prev_user_likes != 'undefined' && 
+								typeof prev_user_likes[pid] != 'undefined')
+							{				
+								$(prev_user_likes[pid]).each(function(index,commentid){
+								    if (commentid == useranswerlist[pid][usercomment['id']]["id"])
+									{
+										selected = 'checked="checked"';
+									}
+								});
+							}
+							
+							var disabled = "";
+							
+							//alert(useranswerlist[pid][usercomment['id']]["id"]);
+							var numlikes = useranswerlist[pid][usercomment['id']]["numlikes"] - 1;
+							var show_likes = '';
+							if (numlikes > 0)
+							{
+								show_likes = '<div class="likes">' + numlikes + ' likes</div>';
+							}
+							
+							buffer += '<td class="comment reply">' + //'<div class="cellbox">' +
+							useranswerlist[pid][usercomment['id']]["comment"] + 
+							show_likes + '</td>';
+		
+							buffer += '<td class="select"><input title="Click to like this" type="checkbox" name="select_comment[' +
+							pid + '][]" value="' + 
+							useranswerlist[pid][usercomment['id']]["id"] + '" ' + selected +
+							' ' + disabled + '"></td>';
+						}
+						
+						
+						else if (proposals[pid]['usercreatorid'] == userid) // donow
+						{
+							
+							
+							//buffer += '<td class="comment reply" contenteditable="true">' + 
+							//'Reply to this question' +
+							//'</td><td class="select"></td>';
+							
+							buffer += '<td class="reply">' + 
+							'<textarea class="reply" rows="5" cols="60" name="replies['+ pid +']['+ 
+							usercomment['id'] +']"></textarea>' +
+							'</td><td class="select"></td>'
+							
+						}
+						
+						
+						else
+						{
+							buffer += '<td class="nocomment"></td><td class="select"></td>';
+						}
+						
+						questionanswertable.append('<tr>' + buffer + '</tr>');
+					} */
+					// end table
 				}	
 			});
 			
 			$.when(createLists).done(function()
 			{
 				comments.slideDown(500);
+				setLikeSelects();
 			});
 		}
 	}
 }
 
+function setLikeSelects()
+{
+	$("input[name^='select_comment']").each(function(event){ 
+		var pid = parseInt($(this).attr('name').replace(/[^0-9]/g, ''));
+		$(this).data('pid', pid);
+		var cid = parseInt($(this).val());
+		$(this).data('cid', cid);
+	});
+}
 
 $(function() {
+	$('#showallcomments').live("click", function(e){ // donow
+		if (voting_settings['use_voting_comments'] == "No")
+		{
+			return;
+		}
+		
+		if (typeof $(this).data('state') == 'undefined')
+		{
+			$(this).data('state', 'closed');
+		}
+		
+		if ($(this).data('state') == 'closed')
+		{
+			$(this).html('Hide all coments');
+			$(this).data('state', 'open');
+			$('.comments').each(function(){
+				openCommentsList($(this));
+			});
+		}
+		else
+		{
+			$(this).html('Show all coments');
+			$(this).data('state', 'closed');
+			$('.comments').each(function(){
+				closeCommentsList($(this));
+			});
+		}
+	});
+	
+	
+	//$( "body" ).delegate( '.auth_reply_txt', "click", function( event ) { 
+	$('.auth_reply_txt').live("click", function(e){
+		if (voting_settings['use_voting_comments'] == "No")
+		{
+			return;
+		}
+		var comments = $(this).parents('.proposalcontent').find('.comments');
+		var commentform = $(this).parents('td.proposalcontent').find('.commentform');
+		
+		//commentform.find('.intro').html("<p>Please tell us why you either like or don\'t like this proposal.</p>");
+		commentform.find('textarea').trigger('setcharcount');
+		
+		if (!commentform.is(':visible'))
+		{
+			openCommentsList(comments);
+			commentform.slideDown(500, function(){
+				$(this).find('.textbox').fadeIn(500);
+			});
+		}
+		else
+		{
+			$(this).parents('td').siblings('td.proposalcontent').find('.commentform').slideUp(500);
+			closeCommentsList(comments);
+		}
+	});
+	
+	
 	
 	$('.kpreadcomment').live("click", function(event){
 		var kpcomment = $(this).siblings('.kpcomment');
@@ -201,9 +492,7 @@ $(function() {
 		
 		if (comments.is(':visible'))
 		{
-			dislikecommentslist.empty();
-			confusedcommentslist.empty();
-			comments.slideUp(500);
+			closeCommentsList(comments);
 		}
 		else
 		{
@@ -216,14 +505,26 @@ $(function() {
 			
 			//alert(pid);
 			
-			if (typeof votingcommentslist[pid] != 'undefined')
+			if (typeof usercommentslist[pid] != 'undefined')
 			{
-				var createLists = $.each(votingcommentslist[pid], function(i, usercomment) 
+				var createLists = $.each(usercommentslist[pid], function(i, usercomment) 
 				{					
 					var selected = ''
-					if (typeof user_commentid != 'undefined' && typeof user_commentid[pid] != 'undefined' && user_commentid[pid] == usercomment['id'])
+					/*
+					if (typeof user_commentid != 'undefined' && 
+					 	typeof user_commentid[pid] != 'undefined' &&
+						user_commentid[pid] == usercomment['id'])
+						*/
+					if (typeof prev_user_likes != 'undefined' && 
+					typeof prev_user_likes[pid] != 'undefined')
 					{
-						selected = 'checked="checked"';
+						$(prev_user_likes[pid]).each(function(index,commentid){
+					    if (commentid == usercomment['id'])
+						{
+							//alert('Supported Comment ' + usercomment['id'] + ':' + usercomment['comment']);
+							selected = 'checked="checked"';
+						}
+					});
 					}
 					if (usercomment['comment'] != '')
 					{
@@ -254,56 +555,136 @@ $(function() {
 		}
 	});
 	
-	$('.select_comment').live('click', function(event){
-		var commentformtextarea = $(this).parents('.comments').siblings('.commentform').find('textarea');
-		if (commentformtextarea.val() != '')
+	$('.addcommentlink').live('click', function(event){
+		if (voting_settings['use_voting_comments'] == "No")
 		{
-			var ok = confirm("You sure you want to clear your comment text?");
-			if (ok)
-			{
-				commentformtextarea.val('');
-			}
+			return;
 		}
-	});
-	$('.commentform textarea').live('click', function(event){
-		var form = $(this).parents('.commentform');
-		var comments = form.siblings('.comments');
-		var radios = comments.find('.select_comment input'); // here
 		
-		var selectcomments = $(this).parents('.commentform').siblings('.comments').find('.select_comment input');
-		selectcomments.each(function(){
-			$(this).prop('checked', false);
+		var commentform = $(this).parents('.comments').siblings('.commentform');
+		
+		if (commentform.is(':visible'))
+		{
+			return;
+		}
+		
+		//commentform.find('.intro').html("<p>Please tell us why you either like or don\'t like this proposal.</p>");
+		commentform.find('textarea').trigger('setcharcount');
+		
+		commentform.slideDown(500, function(){
+			$(this).find('.textbox').fadeIn(500);
 		});
+		
+		/*
+	
+		if (!commentform.is(':visible'))
+		{
+			openCommentsList(comments);
+			commentform.slideDown(500, function(){
+				$(this).find('.textbox').fadeIn(500);
+			});
+		}
+		else
+		{
+			$(this).parents('td').siblings('td.proposalcontent').find('.commentform').slideUp(500);
+			closeCommentsList(comments);
+		}*/
 	});
 	
+	$('.canceladdcommentlink').live('click', function(event){
+		if (voting_settings['use_voting_comments'] == "No")
+		{
+			return;
+		}
+		
+		var commentform = $(this).parents('.commentform');
+		
+		if (!commentform.is(':visible'))
+		{
+			return;
+		}
+		
+		commentform.find('textarea').val("");
+		commentform.find(':radio').prop('checked', false);
+		commentform.slideUp(500);
+		
+		/*
+		
+		commentform.find('.intro').html("<p>Please tell us why you either like or don\'t like this proposal.</p>");
+		commentform.find('textarea').trigger('setcharcount');
+		
+		commentform.slideDown(500, function(){
+			$(this).find('.textbox').fadeIn(500);
+		});
+		
+		
+	
+		if (!commentform.is(':visible'))
+		{
+			openCommentsList(comments);
+			commentform.slideDown(500, function(){
+				$(this).find('.textbox').fadeIn(500);
+			});
+		}
+		else
+		{
+			$(this).parents('td').siblings('td.proposalcontent').find('.commentform').slideUp(500);
+			closeCommentsList(comments);
+		}*/
+	});
+	
+
+	
+	$("input[name^='select_comment']").live('click', function(event){ 
+		//var pid = parseInt($(this).attr('name').replace(/[^0-9]/g, ''));
+		//alert(pid);
+		//alert($(this).data('pid'));
+		//var cid = parseInt($(this).val());
+		//alert(cid);
+		//alert($(this).data('cid'));
+	});
+
+	
 	$('.voting_choices img').live('click', function(event){ // FIXME
-		var img = $(this).prop('src');
-		var choice = $(this).parents('.voting_choices').siblings('.voting_choice');
-		choice.css('background-image', 'url('+img+')');
-		var setval = choice.siblings('.voting_choice_val');
-		var prev_val = choice.siblings('.prev_voting_choice_val');
+		
+		if (!$(this).hasClass('add_comment'))
+		{
+			var img = $(this).prop('src');
+			var choice = $(this).parents('.voting_choices').siblings('.voting_choice');
+			choice.css('background-image', 'url('+img+')');
+			var setval = choice.siblings('.voting_choice_val');
+			var prev_val = choice.siblings('.prev_voting_choice_val');
+		}
 		
 		var comments = $(this).parents('.votes').siblings('.proposalcontent').find('.comments');
 		
 		if ($(this).hasClass('1'))
 		{
-			setval.val(1);
+			setval.val(1);						
+		}
+		else if ($(this).hasClass('add_comment')) // donow
+		{
+			if (voting_settings['use_voting_comments'] == "No")
+			{
+				return;
+			}
 			
-			closeCommentsList(comments);
+			var commentform = $(this).parents('td').siblings('td.proposalcontent').find('.commentform');
+			//commentform.find('.intro').html("<p>Please tell us why you either like or don\'t like this proposal.</p>");
+			commentform.find('textarea').trigger('setcharcount');
 			
-			$(this).parents('td').siblings('td.proposalcontent').find('.commentform').slideUp(500);
-			
-			// Remove comment select buttons
-			comments.find('.dislikecommentslist .select_comment').each(function(i){
-				$(this).fadeOut(1000);
-				$(this).children('input').prop('checked', false);
-			});
-			comments.find('.confusedcommentslist .select_comment').each(function(i){
-				$(this).fadeOut(1000);
-				$(this).children('input').prop('checked', false);
-			});
-			//comments.slideUp(1000);
-			//
+			if (!commentform.is(':visible'))
+			{
+				openCommentsList(comments);
+				commentform.slideDown(500, function(){
+					$(this).find('.textbox').fadeIn(500);
+				});
+			}
+			else
+			{
+				$(this).parents('td').siblings('td.proposalcontent').find('.commentform').slideUp(500);
+				closeCommentsList(comments);
+			}
 		}
 		else if ($(this).hasClass('2') || $(this).hasClass('3'))
 		{
@@ -322,70 +703,11 @@ $(function() {
 				return;
 			}
 			
-			var comments = $(this).parents('.votes').siblings('.proposalcontent').find('.comments');
-			openCommentsList(comments);
+			//var comments = $(this).parents('.votes').siblings('.proposalcontent').find('.comments');
+			//openCommentsList(comments);
 						
-			if ($(this).hasClass('2'))
-			{
-				comments.find('.dislikecommentslist .select_comment').each(function(i){
-					$(this).fadeIn(1000);
-				});
-				comments.find('.confusedcommentslist .select_comment').each(function(i){
-					$(this).fadeOut(1000);
-					$(this).children('input').prop('checked', false);
-				});
-			}
-			else if ($(this).hasClass('3'))
-			{
-				comments.find('.dislikecommentslist .select_comment').each(function(i){
-					$(this).fadeOut(1000);
-					$(this).children('input').prop('checked', false);
-				});
-				comments.find('.confusedcommentslist .select_comment').each(function(i){
-					$(this).fadeIn(1000);
-				});
-			}
-			else
-			{
-				comments.find('.dislikecommentslist .select_comment').each(function(i){
-					$(this).fadeOut(1000);
-					$(this).children('input').prop('checked', false);
-				});
-				comments.find('.confusedcommentslist .select_comment').each(function(i){
-					$(this).fadeOut(1000);
-					$(this).children('input').prop('checked', false);
-				});
-			}
-			
-			var pid = parseInt($(this).parents('tr.user_vote').attr('id').replace(/[^0-9]/g, ''));
-			//if ( (setval.val() == 2 || setval.val() == 3) && (prev_val.val() != setval.val()) )
-			if ( (setval.val() == 2 || setval.val() == 3) )
-			{
-				var commentform = $(this).parents('td').siblings('td.proposalcontent').find('.commentform');
-				if (setval.val() == "2")
-				{
-					commentform.find('.intro').html("<p>Please tell us why you don\'t like this proposal.</p> <p>Select a comment you agree with (if there are any) or write your own below.</p>");
-				}
-				else
-				{
-					commentform.find('.intro').html("<p>Please tell us why you don\'t understand this proposal.</p> <p>Select a comment you agree with (if there are any) or write your own below.</p>");
-				}
-				commentform.find('textarea').trigger('setcharcount');
-				
-				if (!commentform.is(':visible'))
-				{
-					commentform.slideDown(500, function(){
-						$(this).find('.textbox').fadeIn(500);
-					});
-				}
-			}
-			else
-			{
-				$(this).parents('td').siblings('td.proposalcontent').find('.commentform').slideUp(500);
-			}
 		}
 	});
-	
 	
 	$('.user_vote').each(function(i){
 		var vote = $(this).find('.voting_choice_val').val();
@@ -429,8 +751,6 @@ $(function() {
 					return true;
 				}
 				
-				//var prev_commentid = parseInt($(this).find('td[name^=prev_commentid]').val())
-
 				var selected_comments = $(this).find('input[name^=select_comment]:checked').length; // 0 or 1
 				var comment_box = $(this).find('.commentform textarea');
 				var new_comment = '';
@@ -484,6 +804,8 @@ $(function() {
 			alert("You must endorse at least one proposal in order to submit your votes");
 			return false;
 		}
+		
+		//$('#user_likes').val(JSON.stringify(prev_user_likes)); // Here
 		
 		// Everything OK - submit votes
 		return true;
@@ -812,6 +1134,7 @@ function ajax_error(jqxhr, status, error)
 	$question_url = SITE_DOMAIN."/viewquestion.php".CreateQuestionURL($question,$room);
 		
 	$subscribed=IsSubscribed($question,$userid);
+	
 
 	if (!empty($bitlyhash)) 
 	{
@@ -1022,14 +1345,42 @@ function ajax_error(jqxhr, status, error)
 			//set_log("Calling ParetoFront() with $question and $generation minus 1");
 			$ParetoFront=ParetoFront($question,$generation-1);
 			
-			//$allconfusedcomments = getCommentsByProposals($ParetoFront);
-			$commentslist = getCommentsList($ParetoFront); // change
-			set_log('$commentslist');
-			set_log($commentslist);
+			//$allconfusedcomments = getCommentsByProposals($ParetoFront); // todo
+			//$usercommentslist = getCommentsList($ParetoFront);
+			//set_log('$usercommentslist');
+			//set_log($usercommentslist);
+			
+			$useranswerlist = array();
+			$usercommentslist = array();
+			
+			$proposals = fetchQuestionProposalsByID($question,$generation-1);
+			
+			//********
+			if ($voting_settings['display_all_previous_comments'])
+			{
+				set_log("display_all_previous_comments set to true");
+				$origids = getOriginalIDs($ParetoFront);
+				$usercommentslist = getCommentsListAll($origids);
+				$useranswerlist = getAnswersListAll($origids);
+			
+				//$generations = array($generation, $generation-1);
+				//$gen_comments = getCommentsListForGenerations($question, $generations)
+				//$usercommentslist = getCommentsListAll($proposallist);
+			}
+			else
+			{
+				set_log("display_all_previous_comments set to false");
+				$usercommentslist = getCommentsList($ParetoFront);
+				$useranswerlist = getAnswersList($ParetoFront);
+				$userlikes = getCommentLikesFromProposals($ParetoFront);
+			}
+			//********
 			
 			?>
 			<script>
-			votingcommentslist = <?=json_encode($commentslist)?>;
+			usercommentslist = <?=json_encode($usercommentslist)?>;
+			useranswerlist = <?=json_encode($useranswerlist)?>;
+			proposals = <?=json_encode($proposals)?>; // donow
 			</script>
 			<?php
 
@@ -1041,9 +1392,10 @@ function ajax_error(jqxhr, status, error)
 				
 				echo '<div class="paretoproposal" id="real_proposal'.$p.'">';
 
-				if (isset($commentslist[$p]) && $voting_settings['use_voting_comments'] != "No")
+				if (isset($usercommentslist[$p]) && $voting_settings['use_voting_comments'] != "No")
 				{
-					echo '<img class="usrmsgpic" src="images/hascomments.jpg" title="'.count($commentslist[$p]).' comments">';
+					echo '<img class="usrmsgpic" src="images/hascomments.jpg" title="'.
+					count($usercommentslist[$p]).' comments and '. count($useranswerlist[$p]) .' answers">';
 				}
 				
 				?>
@@ -1078,11 +1430,32 @@ function ajax_error(jqxhr, status, error)
 				<h3>Disagree</h3>
 				<div class="dislikecommentslist commentslist"></div>
 				</div>
-				
-				<div class="commentsright confused">
-				<h3>Don't Understand</h3>
-				<div class="confusedcommentslist commentslist"></div>
+			
+				<div class="commentsright support">
+				<h3>Support</h3>
+				<div class="supportcommentslist commentslist"></div>
 				</div>
+			
+				<div class="clear"></div>
+				<br><br>
+				
+				<div class="commentsleft confused">
+				<h3>Questions</h3>
+				</div>
+				
+				<div class="commentsright answer">
+				<h3>Author Replies</h3>
+				</div>
+				
+				<div class="questionanswerlist"></div>
+				
+				<div class="clear"></div>
+				
+				<!-- Questionss and Answers table -->
+				<table class="questionsandanswers">
+					<tbody>
+					</tbody>
+				</table>		
 				
 				<div class="clear"></div>
 				
@@ -1188,11 +1561,13 @@ function ajax_error(jqxhr, status, error)
 				<input type="submit" name="submit" id="submit" value="Move On to the Next Phase" />
 			</form>
 			
+			<!--
 			<form autocomplete="off" method="post" action="movetofinalvoting.php">
 			or you can allow endorsers to vote on the current pareto front:
-				<input type="hidden" name="question" id="question" value="<?php echo $question; ?>" />
+				<input type="hidden" name="question" id="question" value="<?php //echo $question; ?>" />
 				<input type="submit" name="submit" id="submit" value="Move to Final Voting Phase" />
 			</form>
+			-->
 			<?php
 		}
 	}
@@ -1500,7 +1875,9 @@ if ($userid) {
 			$userendorsedlist = getUserEndorsedFromList($userid, $proposallist);
 			$useropposedlistdata = getUserOpposedFromList($userid, $proposallist);
 			$useropposedlist = $useropposedlistdata['type'];
-			$user_commentid = $useropposedlistdata['commentid'];			
+			$user_commentid = $useropposedlistdata['commentid'];
+			$prev_user_likes = getUserCommentLikesFromProposals($userid, $proposallist);
+			$prev_user_likes_obj = getUserCommentLikesObjFromProposals($userid, $proposallist);
 		}
 	
 		set_log('$useropposedlistdata');
@@ -1509,46 +1886,65 @@ if ($userid) {
 		set_log('$user_commentid'); 
 		set_log($user_commentid);
 		
+		set_log('$prev_user_likes'); 
+		set_log($prev_user_likes);
+		
 		set_log('$userendorsedlist');
 		set_log($userendorsedlist);
 		
 		set_log('$useropposedlist');
 		set_log($useropposedlist);
 		
+		$proposals = fetchQuestionProposalsByID($question,$generation);
+		
 		
 		if ($voting_settings['display_all_previous_comments'])
 		{
 			set_log("display_all_previous_comments set to true");
+			set_log('$proposallist = ');
+			set_log($proposallist);
 			$origids = getOriginalIDs($proposallist);
-			//$origids = getOriginalIDs($question, $generation);
-			//$origids_mapping = array_flip($origids);
-			$commentslist = getCommentsListAll($origids);
+			set_log('$origids = ');
+			set_log($origids);
+			$usercommentslist = getCommentsListAll($origids);
+			$useranswerlist = getAnswersListAll($origids);
 			
 			//$generations = array($generation, $generation-1);
-			//$gen_comments = getCommentsListForGenerations($question, $generations);
-			
-			//$commentslist = getCommentsListAll($proposallist);
+			//$gen_comments = getCommentsListForGenerations($question, $generations)
+			//$usercommentslist = getCommentsListAll($proposallist);
 		}
 		else
 		{
 			set_log("display_all_previous_comments set to false");
-			$commentslist = getCommentsList($proposallist);
+			$usercommentslist = getCommentsList($proposallist);
+			$useranswerlist = getAnswersList($proposallist);
+			//$userlikes = getCommentLikesFromProposals($proposallist);
 		}
 		
-		set_log('$commentslist');
-		set_log($commentslist);
+		
+		set_log('$usercommentslist');
+		set_log($usercommentslist);
+		
+		set_log('$useranswerlist');
+		set_log($useranswerlist);
+		
+		//set_log('$userlikes');
+		//set_log($userlikes);
 		
 		?>
 		<script>
-		votingcommentslist = <?=json_encode($commentslist)?>; 
-		var user_commentid = <?=json_encode($user_commentid)?>;
+		usercommentslist = <?=json_encode($usercommentslist)?>; 
+		//userlikes = <?=json_encode($userlikes)?>; 
+		useranswerlist = <?=json_encode($useranswerlist)?>; 
+		prev_user_likes = <?=json_encode($prev_user_likes)?>;
+		user_commentid = <?=json_encode($user_commentid)?>;
 		</script>
 		<?php
 		
 		// Set $userendorsedata array
 		$userendorsedata = array();
 		set_log("commentslist = ");
-		set_log($commentslist);
+		set_log($usercommentslist);
 		foreach($proposallist as $p)
 		{
 			set_log("commentslist key = $p");
@@ -1765,6 +2161,8 @@ if ($userid) {
 						$('.graphpanel').fadeIn(1000);
 						//loadGraph('Q73_R2.svg', 'Q73_R2_PF.svg');
 						loadGraph(votesgraph, pfvotesgraph);
+						
+						proposals = <?=json_encode($proposals)?>; // donow
 
 						$('.button').mouseenter(function(event){
 							$(this).addClass("over");
@@ -2050,21 +2448,26 @@ if ($userid) {
 			?>
 			
 			<!--
-			<div class="relation_panel">Identify proposal relations: <span id="select_same">Equivalent Proposals</span><span class="plist"></span></div>
+			<div class="relation_panel">Identify proposal relations: <span id="select_same">Equivalent Proposals</span><span class="plist"></span></div> Here
 			-->
 			
 			<form autocomplete="off" method="post" id="votingform" action="endorse_confused_or_not.php">
 			<input type="hidden" name="question" value="<?=$question?>" />
 			<input type="hidden" name="hasvoted" value="<?=$userhasvoted?>" />
 			<input type="hidden" name="generation" value="<?=$generation?>" />
+		
 			<table border="1" class="your_endorsements userproposal">
 			<tr class="top">
-			<th class="history_cell"><h4><?=$VGA_CONTENT['voting_hist_txt']?></h4></td>
+			<th class="history_cell"><h4><?=$VGA_CONTENT['voting_hist_txt']?></h4></th>
 			<th class="voting_info">
 				<h3><?=$VGA_CONTENT['prop_sol_txt']?></h3>
 				<p><b><?=$VGA_CONTENT['check_all_endorse_txt']?></b></p>
-				</td>
-			<th class="endorse_cell">&nbsp;</td>
+			</th>
+			<th class="endorse_cell">
+				<?php if (count($usercommentslist)) { ?>
+				<div id="showallcomments">Show all comments</div>
+				<?php } else { echo '&nbsp;'; }?>
+			</th>
 			</tr>
 
 			<?php
@@ -2111,9 +2514,11 @@ if ($userid) {
 				echo '<td class="proposalcontent">';
 				echo '<div class="paretoproposal">';
 				
-				if (isset($commentslist[$row['id']]) && $voting_settings['use_voting_comments'] != "No")
+				if (isset($usercommentslist[$row['id']]) && $voting_settings['use_voting_comments'] != "No")
 				{
-					echo '<img class="usrmsgpic" src="images/hascomments.jpg" title="'.count($commentslist[$row['id']]).' comments">';
+					$pid = $row['id'];
+					echo '<img class="usrmsgpic" src="images/hascomments.jpg" title="'.
+					count($usercommentslist[$pid]).' comments and '. count($useranswerlist[$pid]) .' answers">';
 				}
 				
 				$originalname=GetOriginalProposal($proposal);
@@ -2146,19 +2551,52 @@ if ($userid) {
 					<div class="dislikecommentslist commentslist"></div>
 					</div>
 				
-					<div class="commentsright confused">
-					<h3>Don't Understand</h3>
-					<div class="confusedcommentslist commentslist"></div>
+					<div class="commentsright support">
+					<h3>Support</h3>
+					<div class="supportcommentslist commentslist"></div>
 					</div>
 				
 					<div class="clear"></div>
+					
+					<div class="commentsleft confused">
+					<h3>Questions</h3>
+					</div>
+					
+					<div class="commentsright answer">
+					<h3>Author Replies</h3>
+					</div>
+					
+					<div class="questionanswerlist"></div>
+					
+					<div class="clear"></div>
+					
+					<!-- Questionss and Answers table -->
+					<table class="questionsandanswers">
+						<tbody>
+						</tbody>
+					</table>
+					
+					<div class="clear"></div>
+					
+					<div class="addcommentlink">Make a point or ask a question</div>
 				
 				</div> <!-- comments -->
 				
 				<div class="clear"></div><br/>
+				
+				
 				<div class="commentform">
-					<span class="intro"><p>Please tell us why you don't understand this proposal.</p> <p>Select a comment you agree with (if there are any) or write your own below.</p></p></span>
+					<span class="intro"><p>Add a point in favour or against this proposal, or ask the author a question.</p></span>
+					<p class="comment_options">
+						<div class="options"><input type="radio" name="user_comment_type[<?=$current_prop?>]" value="support"><span class="support">A point in favour of this proposal</span></div>
+						<div class="options"><input type="radio" name="user_comment_type[<?=$current_prop?>]" value="dislike"><span class="oppose">A point against this proposal</span></div>
+						<div class="options"><input type="radio" name="user_comment_type[<?=$current_prop?>]" value="confused"><span class="confused">I need to ask a question</span></div>
+					</p>
 					<textarea class="comment" rows="20" cols="100" name="user_comment[<?=$current_prop?>]"></textarea>
+					
+					<br><br>
+					<div class="canceladdcommentlink">Cancel</div>
+					
 				</div>
 				</td>
 				<td class="votes">
@@ -2175,8 +2613,7 @@ if ($userid) {
 				value="<?=($userendorsedata[$current_prop]) ? $userendorsedata[$current_prop] : 1?>">
 				<input type="hidden" class="prev_voting_choice_val" name="prev_proposal[<?=$current_prop?>]" 
 				value="<?=$userendorsedata[$current_prop]?>">
-				<input type="hidden" name="prev_commentid[<?=$current_prop?>]" 
-				value="<?= isset($user_commentid[$current_prop]) ? $user_commentid[$current_prop] : 0  ?>">
+				
 				
 				</div>
 				</td></tr>

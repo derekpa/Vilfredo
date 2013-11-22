@@ -27,6 +27,8 @@ include('header.php');
 //Assumes id is passed in the URL
 var recaptcha_public_key = '<?php echo $recaptcha_public_key;?>';
 var all_comments = [];
+var useranswerlist = [];
+var pid;
 </script>
 <?php
 
@@ -69,7 +71,7 @@ elseif ($whenfrom==$generationNow AND $userid!=$whofrom)
 else
 {
 	
-	$sql = "SELECT proposals.blurb, proposals.experimentid, proposals.abstract, 
+	$sql = "SELECT proposals.id, proposals.blurb, proposals.experimentid, proposals.abstract, 
 	questions.permit_anon_proposals, proposals.originalid
 	FROM proposals, questions 
 	WHERE proposals.id = $proposal
@@ -85,6 +87,8 @@ else
 		$abstract = $row['abstract'];
 		$permit_anon_proposals = $row['permit_anon_proposals'];
 		
+		$pid = $row['id'];
+		
 		$subscribed = IsSubscribed($question, $userid);
 		
 		$all_comments = getVotingCommentDetailsForProposalAllGen($row['originalid']);
@@ -92,9 +96,24 @@ else
 		set_log($all_comments);
 		$has_comments = $all_comments !== false && count($all_comments);
 		
+		$useranswerlist = array();
+		
+		if ($has_comments)
+		{
+			$prop = array($row['id'] => $row['originalid']);
+			set_log('$prop =');
+			set_log($prop);
+			$useranswerlist = getAnswersListAll($prop);
+		}
+		
+		set_log('$useranswerlist = ');
+		set_log($useranswerlist);
+		
 		?>
 		<script>
 		all_comments = <?=json_encode($all_comments)?>;
+		useranswerlist = <?=json_encode(array_shift($useranswerlist))?>;
+		pid = <?=json_encode($pid)?>;
 		</script>
 		<?php
 		
@@ -109,11 +128,13 @@ else
 				
 					if (all_comments.length)
 					{
-						var commentsheading = '<div class="votercommentheadings"><div class="genheading">Generation</div><div class="txtheading">Comment</div><div class="usersheading">Users</div></div>';
+						var commentsheading = '<div class="votercommentheadings"><div class="genheading">Generation</div><div class="txtheading">Comment</div><div class="usersheading">Likes</div></div>';
 						var disagreecomments = $('#disagree-tabs');
 						disagreecomments.append(commentsheading);
 						var confusedcomments = $('#confused-tabs');
 						confusedcomments.append(commentsheading);
+						var supportcomments = $('#support-tabs');
+						supportcomments.append(commentsheading);
 					
 						var createCommentLists = $.each(all_comments, function(i, usercomment) 
 						{						
@@ -123,6 +144,19 @@ else
 							commentstring += usercomment['comment'];
 							commentstring += '</div>';
 							
+							
+							if (usercomment['type'] == 'confused' && 
+								typeof useranswerlist[usercomment['id']] != 'undefined') 
+							{	
+								commentstring += '<div class="votercomment answer">';
+								commentstring += '<div class="commentgen">' + 
+								'A:' + '</div>';
+								commentstring += '<div class="usercount">' + 
+								useranswerlist[usercomment['id']]['numlikes'] + '</div>';
+								commentstring += useranswerlist[usercomment['id']]['comment'];
+								commentstring += '</div>';
+							}
+							
 							if (usercomment['type'] == 'dislike')
 							{
 								disagreecomments.append(commentstring);
@@ -130,6 +164,10 @@ else
 							else if (usercomment['type'] == 'confused')
 							{
 								confusedcomments.append(commentstring);
+							}
+							else if (usercomment['type'] == 'support')
+							{
+								supportcomments.append(commentstring);
 							}
 						});
 					}
@@ -141,12 +179,12 @@ else
 				<div id="commenttabs">
 				<ul>
 				<li><a href="#disagree-tabs">Disagree</a></li>
-				<li><a href="#confused-tabs">Don't Understand</a></li>
+				<li><a href="#support-tabs">Support</a></li>
+				<li><a href="#confused-tabs">Questions</a></li>
 				</ul>
-				<div id="disagree-tabs">
-				</div>
-				<div id="confused-tabs">				
-				</div>
+				<div id="disagree-tabs"></div>
+				<div id="support-tabs"></div>
+				<div id="confused-tabs"></div>
 				</div>
 				
 				<div class="clear"></div>
