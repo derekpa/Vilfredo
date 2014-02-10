@@ -30,8 +30,11 @@ if ($counter > 1)
 #define("TEST_LIVE", TRUE); //test the live site
 
 // Look above document root then in current directory for priv.php
-
-if ($privfile = realpath($_SERVER["DOCUMENT_ROOT"] . "/../priv.php"))
+if ($priv = realpath($_SERVER["DOCUMENT_ROOT"] . "/priv_local/"))
+{
+	define("PRIV", $priv);
+}
+elseif ($privfile = realpath($_SERVER["DOCUMENT_ROOT"] . "/../priv.php"))
 {
 	include $privfile;
 }
