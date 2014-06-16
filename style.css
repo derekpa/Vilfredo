@@ -993,6 +993,7 @@ table#social-buttons {
 td.votes {
 	width: 150px;
 	height: 100px;
+	padding-bottom: 5px;
 }
 .user_vote {
 	width: 150px;
