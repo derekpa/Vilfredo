@@ -1090,7 +1090,7 @@ td.votes {
 .select_comment {
     position: absolute;
     top: 0;
-    right: -25;
+    right: -25px;
     width: 25px;
     height: 25px;
 }
