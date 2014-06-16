@@ -1188,6 +1188,15 @@ td.votes {
     text-align: center;
     margin-top: 10px;
 }
+.addcommentlink.bluebtn {
+    cursor: pointer;
+    padding: 3px 5px;
+    background-color: #0099CC;
+	color: white;
+	text-decoration: none;
+	font-size: 0.9em;
+	margin-left: 10px;
+}
 .canceladdcommentlink {
     font-size: 1.1em;
     color: blue;

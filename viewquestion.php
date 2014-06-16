@@ -562,6 +562,11 @@ $(function() {
 		}
 		
 		var commentform = $(this).parents('.comments').siblings('.commentform');
+		if (commentform.length == 0)
+		{
+			commentform = $(this).parents('.votes').siblings('.proposalcontent').find('.commentform');
+		}
+		
 		
 		if (commentform.is(':visible'))
 		{
@@ -2613,9 +2618,10 @@ if ($userid) {
 				value="<?=($userendorsedata[$current_prop]) ? $userendorsedata[$current_prop] : 1?>">
 				<input type="hidden" class="prev_voting_choice_val" name="prev_proposal[<?=$current_prop?>]" 
 				value="<?=$userendorsedata[$current_prop]?>">
-				
-				
 				</div>
+				
+				<div><span title="Add a comment or ask a question" class="addcommentlink bluebtn">Add Comment</span></div>
+				
 				</td></tr>
 				
 				<?php
